@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    
+    <div class="row mb-4 align-items-center">
+        <div class="col-md-6">
+            <h2 class="fw-bold text-primary">📚 Kütüphane Arşivi</h2>
+            <p class="text-muted">Binlerce kitap arasında keşfe çıkın.</p>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="input-group shadow-sm">
+                <input type="text" id="searchInput" class="form-control" placeholder="Kitap adı veya yazar ara...">
+                <button class="btn btn-primary" type="button" onclick="searchBooks()">
+                    🔍 Ara
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex flex-wrap gap-2 mb-4 justify-content-center">
+        <button class="btn btn-outline-secondary rounded-pill px-4 active-category" onclick="filterCategory('Tümü', this)">Tümü</button>
+        <button class="btn btn-outline-secondary rounded-pill px-4" onclick="filterCategory('Roman', this)">Roman</button>
+        <button class="btn btn-outline-secondary rounded-pill px-4" onclick="filterCategory('Tarih', this)">Tarih</button>
+        <button class="btn btn-outline-secondary rounded-pill px-4" onclick="filterCategory('Bilim', this)">Bilim</button>
+        <button class="btn btn-outline-secondary rounded-pill px-4" onclick="filterCategory('Klasik', this)">Klasik</button>
+    </div>
+
+    <hr class="text-muted">
+
+    <div id="booksContainer" class="row g-4">
+        <div class="text-center w-100 mt-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Yükleniyor...</span>
+            </div>
+            <p class="mt-2 text-muted">Kitaplar raflardan getiriliyor...</p>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    // 1. SAYFA YÜKLENİNCE ÇALIŞIR
+    document.addEventListener("DOMContentLoaded", () => {
+        loadBooks(); // Tüm kitapları getir
+        
+        // "Enter" tuşuna basınca da arama yapsın
+        document.getElementById('searchInput').addEventListener("keypress", function(event) {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                searchBooks();
+            }
+        });
+    });
+
+    // 2. KİTAPLARI SUNUCUDAN ÇEKEN FONKSİYON
+    async function loadBooks(category = "Tümü", searchQuery = "") {
+        const container = document.getElementById('booksContainer');
+        
+        // Yükleniyor simgesi göster
+        container.innerHTML = `
+            <div class="text-center w-100 py-5">
+                <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;"></div>
+                <p class="mt-3 text-muted">Aranıyor...</p>
+            </div>`;
+        
+        try {
+            // URL OLUŞTURMA
+            let url = `/api/books/?cat=${encodeURIComponent(category)}`;
+            
+            // Eğer arama kelimesi varsa URL'ye ekle
+            if(searchQuery && searchQuery.trim() !== "") {
+                url += `&q=${encodeURIComponent(searchQuery)}`;
+            }
+
+            console.log("İstek gönderiliyor:", url); // Hata ayıklama için konsola yaz
+
+            const response = await fetch(url);
+            
+            if (!response.ok) {
+                throw new Error("Sunucu bağlantı hatası: " + response.status);
+            }
+
+            const books = await response.json();
+            container.innerHTML = ''; // Temizle
+
+            // HİÇ KİTAP YOKSA
+            if (books.length === 0) {
+                container.innerHTML = `
+                    <div class="col-12">
+                        <div class="alert alert-warning text-center p-5 shadow-sm">
+                            <h4>😔 Sonuç Bulunamadı</h4>
+                            <p>Aradığınız kriterlere uygun kitap stoklarımızda yok.</p>
+                            <button class="btn btn-outline-dark mt-2" onclick="filterCategory('Tümü')">Tüm Kitapları Göster</button>
+                        </div>
+                    </div>`;
+                return;
+            }
+
+            // KİTAPLARI KART OLARAK YAZDIR
+            books.forEach(book => {
+                // Stok durumuna göre renk ve yazı
+                let stokRozet = book.stok > 0 
+                    ? `<span class="badge bg-success">Stok: ${book.stok}</span>` 
+                    : `<span class="badge bg-danger">Tükendi</span>`;
+                
+                let butonDurum = book.stok > 0 ? '' : 'disabled';
+                let butonMetin = book.stok > 0 ? '📖 Ödünç Al' : '❌ Stok Yok';
+
+                const html = `
+                <div class="col-md-6 col-lg-4">
+                    <div class="card h-100 shadow-sm border-0 hover-card">
+                        <div class="card-header bg-transparent border-0 d-flex justify-content-between pt-3">
+                            <span class="badge bg-light text-dark border">${book.kategori}</span>
+                            ${stokRozet}
+                        </div>
+                        <div class="card-body">
+                            <h5 class="card-title fw-bold text-dark mb-1">${book.ad}</h5>
+                            <p class="card-text text-muted small fst-italic mb-3">${book.yazar}</p>
+                            <hr class="my-2 opacity-25">
+                            <p class="small text-muted mb-0">Durum: <span class="fw-semibold">${book.durum}</span></p>
+                        </div>
+                        <div class="card-footer bg-transparent border-0 pb-3">
+                            <button onclick="borrowBook(${book.id})" 
+                                    class="btn btn-primary w-100 rounded-3" ${butonDurum}>
+                                ${butonMetin}
+                            </button>
+                        </div>
+                    </div>
+                </div>`;
+                container.innerHTML += html;
+            });
+
+        } catch (error) {
+            console.error("Hata:", error);
+            container.innerHTML = `<div class="alert alert-danger w-100 text-center">Bir hata oluştu: ${error.message}</div>`;
+        }
+    }
+
+    // 3. ARAMA BUTONU FONKSİYONU
+    function searchBooks() {
+        const query = document.getElementById('searchInput').value;
+        // Arama yaparken kategoriyi sıfırla veya mevcut kategoride ara (Şimdilik Tümü'nde arıyoruz)
+        loadBooks("Tümü", query);
+    }
+
+    // 4. KATEGORİ BUTONU FONKSİYONU
+    function filterCategory(categoryName, btnElement) {
+        // Arama kutusunu temizle
+        const searchBox = document.getElementById('searchInput');
+        if(searchBox) searchBox.value = "";
+        
+        // Buton renklerini güncelle (Görsel efekt)
+        if(btnElement) {
+            document.querySelectorAll('.btn-group button, .d-flex button').forEach(btn => {
+                btn.classList.remove('btn-dark', 'text-white');
+                btn.classList.add('btn-outline-secondary');
+            });
+            btnElement.classList.remove('btn-outline-secondary');
+            btnElement.classList.add('btn-dark', 'text-white');
+        }
+
+        loadBooks(categoryName);
+    }
+
+    // 5. ÖDÜNÇ ALMA FONKSİYONU (Token Kontrollü)
+    async function borrowBook(bookId) {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            if(confirm("Bu işlem için giriş yapmalısınız. Giriş sayfasına gitmek ister misiniz?")) {
+                window.location.href = '/login';
+            }
+            return;
+        }
+
+        if(!confirm("Bu kitabı ödünç almak istediğinize emin misiniz?")) return;
+
+        try {
+            const res = await fetch('/api/loans/borrow', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + token 
+                },
+                body: JSON.stringify({ book_id: bookId })
+            });
+
+            const data = await res.json();
+            
+            if(res.ok) {
+                alert("✅ " + (data.message || "İşlem Başarılı!"));
+                loadBooks(); // Listeyi yenile (Stok düşsün)
+            } else {
+                alert("❌ Hata: " + (data.msg || data.error || "Bilinmeyen Hata"));
+            }
+        } catch(e) { 
+            console.error(e);
+            alert("Sunucu ile iletişim kurulamadı!"); 
+        }
+    }
+</script>
+
+<style>
+    .hover-card { transition: transform 0.2s; }
+    .hover-card:hover { transform: translateY(-5px); }
+</style>
+{% endblock %}

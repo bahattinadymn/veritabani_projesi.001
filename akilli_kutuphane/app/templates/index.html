@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    /* Sadece bu sayfaya özel stiller */
+    .hero-wrapper {
+        position: relative;
+        /* Arka plan resmi (kapak.jpg) static/img klasöründe olmalı */
+        background: url("{{ url_for('static', filename='img/kapak.jpg') }}");
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        border-radius: 20px;
+        overflow: hidden;
+        /* Köşeleri yuvarlatmak için taşan kısımları gizle */
+        box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
+        margin-bottom: 50px;
+        min-height: 500px;
+        /* Yüksekliği artırdık ki arka plan daha çok görünsün */
+    }
+
+    /* Yeni Dikey Kart Stili */
+    .hero-card {
+
+        background-color: rgba(0, 0, 0, 0.7);
+        padding: 60px 40px;
+        /* İç boşluklar */
+        color: white;
+        height: 100%;
+        /* Wrapper'ın yüksekliğini kaplasın */
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        /* İçeriği dikeyde ortala */
+        /*backdrop-filter: blur(5px); /* Hafif bir bulanıklık efekti (isteğe bağlı) */
+    }
+
+    /* Diğer stiller aynı */
+    .feature-card {
+        border: none;
+        border-radius: 15px;
+        transition: all 0.3s ease;
+        background: white;
+        height: 100%;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+    }
+
+    .feature-card:hover {
+        transform: translateY(-10px);
+        box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+    }
+
+    .leaderboard-box {
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.05);
+        overflow: hidden;
+    }
+</style>
+
+<div class="hero-wrapper">
+    <div class="row h-100 g-0">
+        <div class="col-lg-5 col-md-6 h-100">
+            <div class="hero-card text-center text-md-start">
+                <h1 class="display-4 fw-bold mb-3">Bilgiye Açılan Kapı</h1>
+                <p class="lead mb-4 opacity-75">
+                    Kütüphane yönetiminde profesyonel çözüm. Binlerce kitaba anında erişin,
+                    okuma serüveninizi takip edin ve liderlik tablosunda yerinizi alın.
+                </p>
+                <div class="d-flex gap-3 justify-content-center justify-content-md-start flex-wrap">
+                    <a href="/books" class="btn btn-primary btn-lg px-4 py-3 rounded-pill fw-bold shadow">
+                        📖 Kitapları Keşfet
+                    </a>
+                    <a href="/register" class="btn btn-outline-light btn-lg px-4 py-3 rounded-pill fw-bold">
+                        Üye Ol
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-7 col-md-6"></div>
+    </div>
+</div>
+
+<div class="container mt-5">
+    <div class="row g-4">
+
+        <div class="col-md-4">
+            <a href="/books" class="text-decoration-none text-dark">
+                <div class="card h-100 border-0 shadow-sm card-hover text-center p-4">
+                    <div class="card-body">
+                        <div class="display-4 mb-3">🚀</div>
+                        <h4 class="card-title fw-bold">Hızlı Erişim</h4>
+                        <p class="card-text text-muted">
+                            Gelişmiş arama motorumuz ile aradığınız kitaba saniyeler içinde ulaşın.
+                        </p>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <div class="col-md-4">
+            <a href="/profile" class="text-decoration-none text-dark">
+                <div class="card h-100 border-0 shadow-sm card-hover text-center p-4">
+                    <div class="card-body">
+                        <div class="display-4 mb-3">🗓️</div>
+                        <h4 class="card-title fw-bold">Kolay Takip</h4>
+                        <p class="card-text text-muted">
+                            İade tarihlerini kaçırmayın. Profilinizden tüm süreci anlık yönetin.
+                        </p>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <div class="col-md-4">
+            <a href="/leaderboard" class="text-decoration-none text-dark">
+                <div class="card h-100 border-0 shadow-sm card-hover text-center p-4">
+                    <div class="card-body">
+                        <div class="display-4 mb-3">🏆</div>
+                        <h4 class="card-title fw-bold">Rekabet & Eğlence</h4>
+                        <p class="card-text text-muted">
+                            En çok okuyanlar listesine girin, rozetler kazanın ve okumayı oyuna dönüştürün.
+                        </p>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+    </div>
+</div>
+
+<style>
+    .card-hover {
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .card-hover:hover {
+        transform: translateY(-10px);
+        /* Yukarı zıplat */
+        box-shadow: 0 1rem 3rem rgba(0, 0, 0, .175) !important;
+        /* Gölgeyi büyüt */
+        cursor: pointer;
+        background-color: #f8f9fa;
+        /* Hafif gri olsun */
+    }
+</style>
+
+<div class="row justify-content-center mb-5">
+    <div class="col-lg-8">
+        <div class="text-center mb-4">
+            <h2 class="fw-bold">🏆 Haftanın En Çok Okuyanları</h2>
+            <p class="text-muted">Kütüphanemizin gurur tablosu</p>
+        </div>
+        <div class="leaderboard-box">
+            <div class="bg-primary text-white p-3 d-flex justify-content-between align-items-center">
+                <span class="fw-bold">Öğrenci Adı</span><span class="fw-bold">Okunan Kitap</span>
+            </div>
+            <ul id="leaderboardList" class="list-group list-group-flush">
+                <li class="list-group-item text-center py-4 text-muted">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <div class="mt-2">Veriler yükleniyor...</div>
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", async function () {
+        try {
+            const response = await fetch('/api/reports/leaderboard');
+            const data = await response.json();
+            const list = document.getElementById('leaderboardList');
+            list.innerHTML = '';
+            if (data.length === 0) {
+                list.innerHTML = '<li class="list-group-item text-center py-4 text-muted">Henüz veri yok. İlk okuyan sen ol!</li>';
+                return;
+            }
+            data.forEach((user, index) => {
+                let rankStyle = "bg-light text-muted"; let icon = `#${index + 1}`; let rowClass = "";
+                if (index === 0) { icon = '🥇'; rankStyle = "fs-4"; rowClass = "bg-warning bg-opacity-10"; }
+                if (index === 1) { icon = '🥈'; rankStyle = "fs-5"; }
+                if (index === 2) { icon = '🥉'; rankStyle = "fs-5"; }
+                list.innerHTML += `
+                    <li class="list-group-item d-flex justify-content-between align-items-center ${rowClass}">
+                        <div class="d-flex align-items-center">
+                            <span class="me-3 fw-bold ${rankStyle}" style="min-width:30px;">${icon}</span>
+                            <span class="fw-semibold" style="font-size: 1.1rem;">${user.ad_soyad}</span>
+                        </div>
+                        <span class="badge bg-primary rounded-pill px-3 py-2">${user.skor} Kitap</span>
+                    </li>`;
+            });
+        } catch (error) {
+            console.error(error);
+            document.getElementById('leaderboardList').innerHTML = '<li class="list-group-item text-danger text-center">Veri yüklenemedi.</li>';
+        }
+    });
+</script>
+{% endblock %}

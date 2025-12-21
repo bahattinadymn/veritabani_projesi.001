@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center mt-5">
+    <div class="col-md-6">
+        <div class="card p-4">
+            <h2 class="text-center mb-4 text-success">Kayıt Ol</h2>
+            
+            <div id="alertBox" class="alert alert-danger d-none"></div>
+
+            <form id="registerForm">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label>Ad</label>
+                        <input type="text" id="ad" class="form-control" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label>Soyad</label>
+                        <input type="text" id="soyad" class="form-control" required>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label>E-Posta Adresi</label>
+                    <input type="email" id="email" class="form-control" required>
+                </div>
+                <div class="mb-3">
+                    <label>Şifre</label>
+                    <input type="password" id="sifre" class="form-control" required>
+                </div>
+                <button type="submit" class="btn btn-success w-100">Kayıt Ol</button>
+            </form>
+            <p class="mt-3 text-center">Zaten hesabın var mı? <a href="/login">Giriş Yap</a></p>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.getElementById('registerForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const data = {
+            ad: document.getElementById('ad').value,
+            soyad: document.getElementById('soyad').value,
+            email: document.getElementById('email').value,
+            sifre: document.getElementById('sifre').value
+        };
+        const alertBox = document.getElementById('alertBox');
+
+        try {
+            const response = await fetch('/api/auth/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            const result = await response.json();
+
+            if (response.status === 201) {
+                // Kayıt Başarılı -> Giriş sayfasına yönlendir
+                alert("Kayıt başarılı! Lütfen giriş yapın.");
+                window.location.href = '/login';
+            } else {
+                alertBox.textContent = result.error || "Kayıt başarısız!";
+                alertBox.classList.remove('d-none');
+            }
+        } catch (error) {
+            console.error('Hata:', error);
+            alertBox.textContent = "Sunucu hatası oluştu.";
+            alertBox.classList.remove('d-none');
+        }
+    });
+</script>
+{% endblock %}

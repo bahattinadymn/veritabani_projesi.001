@@ -1,0 +1,325 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    /* Bu sayfaya özel CSS stilleri (Senin tasarımın) */
+    .profile-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 15px 15px 0 0;
+        padding: 40px 20px;
+        text-align: center;
+    }
+
+    .profile-img {
+        width: 100px;
+        height: 100px;
+        background-color: white;
+        border-radius: 50%;
+        padding: 5px;
+        margin-top: -50px;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    }
+
+    .stat-card {
+        transition: transform 0.2s;
+        border: none;
+        background-color: #fff;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    }
+
+    .stat-card:hover {
+        transform: translateY(-5px);
+    }
+
+    .table-custom th {
+        background-color: #f8f9fa;
+        font-weight: 600;
+        color: #555;
+    }
+
+    .table-custom td {
+        vertical-align: middle;
+    }
+</style>
+
+<div class="row mt-4">
+    <div class="col-lg-4 mb-4">
+        <div class="card border-0 shadow-sm rounded-4">
+            <div class="profile-header">
+                <h4 class="mb-0">Öğrenci Portalı</h4>
+            </div>
+
+            <div class="card-body text-center">
+                <img src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png" alt="User" class="profile-img mb-3">
+
+                <h3 id="userName" class="fw-bold mb-1">Yükleniyor...</h3>
+                <span class="badge bg-primary px-3 py-2 rounded-pill">🎓 KTÜ Öğrencisi</span>
+
+                <hr class="my-4">
+
+                <div class="d-flex justify-content-around text-center mb-4">
+                    <div>
+                        <h5 class="fw-bold mb-0" id="bookCount">0</h5>
+                        <small class="text-muted">Okunan</small>
+                    </div>
+                    <div>
+                        <h5 class="fw-bold mb-0 text-success">A+</h5>
+                        <small class="text-muted">Puan</small>
+                    </div>
+                </div>
+
+                <button onclick="logout()" class="btn btn-outline-danger w-100 rounded-pill">
+                    Güvenli Çıkış Yap
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-8">
+
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card stat-card p-3">
+                    <div class="d-flex align-items-center">
+                        <div class="bg-primary text-white p-3 rounded-circle me-3">
+                            📚
+                        </div>
+                        <div>
+                            <h6 class="text-muted mb-0">Aktif Ödünç</h6>
+                            <h4 class="fw-bold mb-0" id="activeLoanCount">0 Kitap</h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card stat-card p-3">
+                    <div class="d-flex align-items-center">
+                        <div class="bg-success text-white p-3 rounded-circle me-3">
+                            📅
+                        </div>
+                        <div>
+                            <h6 class="text-muted mb-0">Son İade Tarihi</h6>
+                            <h4 class="fw-bold mb-0" id="lastDate">-</h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm rounded-4 mb-4">
+            <div class="card-header bg-white py-3 border-0">
+                <h5 class="mb-0 text-primary fw-bold">📖 Elimdeki Kitaplar</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-custom table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th class="ps-4">Kitap Bilgisi</th>
+                                <th>Alış Tarihi</th>
+                                <th>Durum (Kalan Gün)</th>
+                                <th class="text-end pe-4">İşlem</th>
+                            </tr>
+                        </thead>
+                        <tbody id="loansTable">
+                            <tr>
+                                <td colspan="4" class="text-center py-5 text-muted">Veriler yükleniyor...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm rounded-4">
+            <div class="card-header bg-white py-3 border-0 d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 text-danger fw-bold">⚠️ Ceza ve Ödeme Geçmişi</h5>
+                <span class="badge bg-danger rounded-pill fs-6" id="totalDebtDisplay">0.00 TL</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-custom table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th class="ps-4">Kitap</th>
+                                <th>Açıklama</th>
+                                <th>Tarih</th>
+                                <th class="text-end pe-4">Tutar</th>
+                            </tr>
+                        </thead>
+                        <tbody id="finesContainer">
+                            <tr>
+                                <td colspan="4" class="text-center py-4 text-muted">Yükleniyor...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        loadMyLoans();
+        loadMyFines(); // Cezaları da yükle
+    });
+
+    // --- AKTİF KİTAPLARI YÜKLE ---
+    async function loadMyLoans() {
+        const user = JSON.parse(localStorage.getItem('user'));
+        if (user) document.getElementById('userName').textContent = user.ad + ' ' + user.soyad;
+
+        const token = localStorage.getItem('token');
+        if (!token) window.location.href = '/login';
+
+        try {
+            const response = await fetch('/api/loans/my', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const loans = await response.json();
+
+            // İstatistikleri Güncelle
+            document.getElementById('activeLoanCount').textContent = loans.length + ' Kitap';
+            document.getElementById('bookCount').textContent = loans.length + 3;
+
+            const tbody = document.getElementById('loansTable');
+            tbody.innerHTML = '';
+
+            if (loans.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="4" class="text-center py-5">
+                            <div class="text-muted">
+                                <span style="font-size: 40px;">📭</span><br>
+                                Şu an ödünç aldığınız kitap yok.<br>
+                                <a href="/books" class="btn btn-sm btn-primary mt-2">Kitaplara Göz At</a>
+                            </div>
+                        </td>
+                    </tr>`;
+                document.getElementById('lastDate').textContent = "Yok";
+                return;
+            }
+
+            let minDate = null;
+
+            loans.forEach(loan => {
+                const today = new Date();
+                const due = new Date(loan.son_teslim);
+                const diffTime = due - today;
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                if (!minDate || due < minDate) minDate = due;
+
+                let badgeHtml = '';
+                if (diffDays < 0) {
+                    badgeHtml = `<span class="badge bg-danger">Gecikmiş (${Math.abs(diffDays)} gün)</span>`;
+                } else if (diffDays <= 3) {
+                    badgeHtml = `<span class="badge bg-warning text-dark">${diffDays} gün kaldı</span>`;
+                } else {
+                    badgeHtml = `<span class="badge bg-success">Sorun Yok (${diffDays} gün)</span>`;
+                }
+
+                const row = `
+                    <tr>
+                        <td class="ps-4">
+                            <div class="d-flex align-items-center">
+                                <div class="bg-light p-2 rounded me-3" style="font-size:20px;">📘</div>
+                                <div>
+                                    <div class="fw-bold text-dark">${loan.kitap_adi}</div>
+                                    <small class="text-muted">${loan.yazar}</small>
+                                </div>
+                            </div>
+                        </td>
+                        <td>${loan.alis_tarihi}</td>
+                        <td>${badgeHtml}</td>
+                        <td class="text-end pe-4">
+                            <button onclick="returnBook(${loan.loan_id})" class="btn btn-sm btn-outline-success px-3 rounded-pill shadow-sm">
+                                🔄 İade Et
+                            </button>
+                        </td>
+                    </tr>
+                `;
+                tbody.innerHTML += row;
+            });
+
+            if (minDate) {
+                document.getElementById('lastDate').textContent = minDate.toLocaleDateString('tr-TR');
+            }
+
+        } catch (error) {
+            console.error(error);
+        }
+    }
+
+    // --- CEZALARI YÜKLE (YENİ) ---
+    async function loadMyFines() {
+        const token = localStorage.getItem('token');
+        const container = document.getElementById('finesContainer');
+        const totalDisplay = document.getElementById('totalDebtDisplay');
+
+        try {
+            const response = await fetch('/api/loans/fines/my', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const fines = await response.json();
+
+            container.innerHTML = ''; // Temizle
+
+            if (fines.length === 0) {
+                container.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-muted">🎉 Tebrikler! Hiç cezanız yok.</td></tr>';
+                totalDisplay.textContent = "0.00 TL";
+                return;
+            }
+
+            let totalAmount = 0;
+            fines.forEach(fine => {
+                totalAmount += parseFloat(fine.tutar);
+                const row = `
+                <tr>
+                    <td class="ps-4 fw-bold text-dark">${fine.kitap}</td>
+                    <td class="text-muted small">${fine.aciklama}</td>
+                    <td class="text-muted small">${fine.tarih}</td>
+                    <td class="text-end pe-4 fw-bold text-danger">-${fine.tutar} TL</td>
+                </tr>`;
+                container.innerHTML += row;
+            });
+            totalDisplay.textContent = totalAmount.toFixed(2) + " TL";
+
+        } catch (error) {
+            console.error(error);
+            container.innerHTML = '<tr><td colspan="4" class="text-center text-danger">Veri yüklenemedi.</td></tr>';
+        }
+    }
+
+    // --- İADE ETME ---
+    async function returnBook(loanId) {
+        if (!confirm("Bu kitabı kütüphaneye iade edip düşmek istiyor musunuz?")) return;
+
+        const token = localStorage.getItem('token');
+        try {
+            const response = await fetch('/api/loans/return', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ loan_id: loanId })
+            });
+
+            // Dönen cevabı al (Ceza mesajı olabilir)
+            const data = await response.json();
+
+            if (response.ok) {
+                alert("✅ " + data.message); // Backend'den gelen mesajı göster
+                loadMyLoans();
+                loadMyFines(); // Cezaları da yenile
+            } else {
+                alert("Hata: " + data.error);
+            }
+        } catch (e) { console.error(e); }
+    }
+</script>
+{% endblock %}

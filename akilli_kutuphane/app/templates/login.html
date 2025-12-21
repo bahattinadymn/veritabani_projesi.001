@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center mt-5">
+    <div class="col-md-5">
+        <div class="card p-4">
+            <h2 class="text-center mb-4 text-primary">Giriş Yap</h2>
+
+            <div id="alertBox" class="alert alert-danger d-none"></div>
+
+            <form id="loginForm">
+                <div class="mb-3">
+                    <label>E-Posta Adresi</label>
+                    <input type="email" id="email" class="form-control" required>
+                </div>
+                <div class="mb-3">
+                    <label>Şifre</label>
+                    <input type="password" id="sifre" class="form-control" required>
+                </div>
+                <button type="submit" class="btn btn-primary w-100">Giriş Yap</button>
+            </form>
+            <p class="mt-3 text-center">Hesabın yok mu? <a href="/register">Kayıt Ol</a></p>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Sayfa açılınca eski bozuk tokenları temizleyelim
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+
+    document.getElementById('loginForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        const email = document.getElementById('email').value;
+        const sifre = document.getElementById('sifre').value;
+
+        try {
+            const response = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, sifre })
+            });
+
+            const data = await response.json();
+            console.log("Sunucu Cevabı:", data); // F12 Konsolunda cevabı gör
+
+            if (response.ok) {
+                // Token kontrolü
+                if (data.token) {
+                    localStorage.setItem('token', data.token);
+                    localStorage.setItem('user', JSON.stringify(data.user));
+
+                    alert("✅ Giriş Başarılı!");
+                    window.location.href = '/';
+                } else {
+                    alert("HATA: Giriş başarılı ama Token gelmedi!");
+                }
+            } else {
+                // Hata mesajını göster (Undefined çıkarsa 'Bilinmeyen Hata' yazar)
+                alert("❌ Hata: " + (data.error || data.msg || "Bilinmeyen sunucu hatası"));
+            }
+        } catch (error) {
+            console.error(error);
+            alert("⚠️ Sunucuya bağlanılamadı! Terminali kontrol et.");
+        }
+    });
+</script>
+{% endblock %}

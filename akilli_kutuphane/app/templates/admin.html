@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+
+            <div class="card border-0 shadow-lg rounded-4 overflow-hidden">
+                <div class="card-header bg-dark text-white py-4 text-center">
+                    <h3 class="fw-bold mb-0">🛠️ Yönetici Paneli</h3>
+                    <p class="mb-0 text-white-50">Kütüphaneye Yeni Kitap Ekle</p>
+                </div>
+
+                <div class="card-body p-5">
+                    <form id="addBookForm">
+                        <div class="mb-4">
+                            <label class="form-label fw-bold text-muted">Kitap Adı</label>
+                            <input type="text" id="ad" class="form-control form-control-lg bg-light"
+                                placeholder="Örn: Sefiller" required>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label fw-bold text-muted">Yazar</label>
+                            <input type="text" id="yazar" class="form-control form-control-lg bg-light"
+                                placeholder="Örn: Victor Hugo" required>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-4">
+                                <label class="form-label fw-bold text-muted">Kategori</label>
+                                <select id="kategori" class="form-select form-select-lg bg-light">
+                                    <option value="Roman">Roman</option>
+                                    <option value="Bilim">Bilim</option>
+                                    <option value="Tarih">Tarih</option>
+                                    <option value="Felsefe">Felsefe</option>
+                                    <option value="Kişisel Gelişim">Kişisel Gelişim</option>
+                                    <option value="Klasik">Klasik</option>
+                                    <option value="Distopya">Distopya</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-6 mb-4">
+                                <label class="form-label fw-bold text-muted">Stok Sayısı</label>
+                                <input type="number" id="stok" class="form-control form-control-lg bg-light" value="10"
+                                    min="1">
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2 mt-2">
+                            <button type="submit" class="btn btn-dark btn-lg rounded-pill fw-bold shadow-sm">
+                                📚 Kitabı Kaydet
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="text-center mt-4">
+                <a href="/books" class="text-decoration-none text-muted">← Kütüphaneye Dön</a>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+    document.getElementById('addBookForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        // 1. Token Kontrolü
+        const token = localStorage.getItem('token');
+        if (!token) {
+            alert("⚠️ Lütfen önce giriş yapın!");
+            window.location.href = '/login';
+            return;
+        }
+
+        const data = {
+            ad: document.getElementById('ad').value,
+            yazar: document.getElementById('yazar').value,
+            kategori: document.getElementById('kategori').value,
+            stok: document.getElementById('stok').value
+        };
+
+        try {
+            const response = await fetch('/api/books/add', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + token
+                },
+                body: JSON.stringify(data)
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                alert("✅ " + (result.message || "İşlem Başarılı!"));
+                document.getElementById('addBookForm').reset();
+            } else {
+                // HATAYI YAKALA: msg, error veya message olabilir
+                const hataMesaji = result.error || result.msg || result.message || "Bilinmeyen Hata";
+                alert("❌ Hata: " + hataMesaji);
+            }
+        } catch (error) {
+            console.error(error);
+            alert("⚠️ Sunucu Hatası (Terminali kontrol et)");
+        }
+    });
+</script>
+{% endblock %}
