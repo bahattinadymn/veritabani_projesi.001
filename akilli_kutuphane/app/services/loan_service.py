@@ -3,6 +3,8 @@ from app.repositories.loan_repository import LoanRepository
 from app.repositories.book_repository import BookRepository
 import datetime
 from sqlalchemy import text
+from app.services.email_service import send_email
+from app.repositories.user_repository import UserRepository # Kullanıcı mailini bulmak için
 
 class LoanService:
     def __init__(self):
@@ -31,10 +33,23 @@ class LoanService:
             # SQL Trigger devreye girip Stok sayısını kendisi düşürecek!
             new_loan = self.loan_repo.create(user_id, book_id, son_teslim)
             
-            # Not: 'book.stok -= 1' satırını sildik. İş Veritabanında!
+            user = self.user_repo.get_by_id(user_id) # Kullanıcıyı bul
             
+            icerik = f"""
+            Merhaba {user.ad},
+            
+            '{book.ad}' isimli kitabı ödünç aldın.
+            Son teslim tarihin: {son_teslim.strftime('%d.%m.%Y')}
+            
+            Lütfen zamanında getirmeyi unutma!
+            Keyifli okumalar.
+            """
+            send_email("Kitap Ödünç Alma İşlemi Başarılı 📖", user.email, icerik)
+            # -----------------------------------------------
+
             return new_loan
         except Exception as e:
+            
             # Hata olursa geri al
             db.session.rollback()
             print(f"ÖDÜNÇ HATASI: {e}")

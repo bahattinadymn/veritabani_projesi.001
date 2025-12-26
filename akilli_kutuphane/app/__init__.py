@@ -3,11 +3,13 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_jwt_extended import JWTManager
 from config import Config
+from flask_mail import Mail
 
 # Eklentileri tanımlıyoruz
 db = SQLAlchemy()
 migrate = Migrate()
 jwt = JWTManager()
+mail = Mail()
 
 def create_app():
     app = Flask(__name__)
@@ -17,6 +19,7 @@ def create_app():
     db.init_app(app)
     migrate.init_app(app, db)
     jwt.init_app(app)
+    mail.init_app(app)
 
     # Modelleri (Tabloları) sisteme tanıtıyoruz
     from app.models.user import User
