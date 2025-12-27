@@ -68,7 +68,7 @@ def send_return_notification(alici_email, kullanici_adi, kitap_adi, ceza_tutari=
         KTÜ Kütüphane Otomasyonu
         """
         
-        # 👇 HOCANIN İSTEDİĞİ KISIM: delay=60 (60 Saniye Gecikme)
+        #  delay=60 (60 Saniye Gecikme)
         send_email(konu, alici_email, icerik, delay=60)
         
         return True
