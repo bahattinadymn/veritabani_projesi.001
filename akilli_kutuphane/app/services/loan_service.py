@@ -1,7 +1,8 @@
 from app.repositories.loan_repository import LoanRepository
 from app.repositories.book_repository import BookRepository
-from app.repositories.user_repository import UserRepository # 1. Import Eklendi
-from app.services.email_service import send_email
+from app.repositories.user_repository import UserRepository
+# 👇 GÜNCELLEME: Yeni mail fonksiyonunu buraya ekledik
+from app.services.email_service import send_email, send_return_notification
 from datetime import datetime, timedelta
 
 class LoanService:
@@ -26,16 +27,14 @@ class LoanService:
             raise Exception("Bu kitabı zaten ödünç aldınız ve henüz iade etmediniz.")
 
         # 4. Kitabı Ver (Veritabanına Kayıt)
-        # 14 gün sonrasını hesapla
         son_teslim = datetime.utcnow() + timedelta(days=14)
         new_loan = self.loan_repo.create(user_id, book_id, son_teslim)
         
-        # 5. MAİL GÖNDERME İŞLEMİ (Hata veren yer burasıydı)
+        # 5. MAİL GÖNDERME (Ödünç Alma)
         try:
-            # Artık self.user_repo tanımlı olduğu için çalışacak
             user = self.user_repo.get_by_id(user_id)
             
-            if user: # Kullanıcı bulunduysa mail at
+            if user: 
                 icerik = f"""
                 Merhaba {user.ad},
                 
@@ -48,12 +47,12 @@ class LoanService:
                 send_email("Kitap Ödünç Alındı 📖", user.email, icerik)
                 
         except Exception as e:
-            # Mail atılamasa bile işlem başarılı sayılsın, hata verip süreci durdurmasın
-            print(f"Mail gönderme hatası: {e}")
+            print(f"Ödünç alma mail hatası: {e}")
 
         return new_loan
 
     def return_book(self, loan_id):
+        # 1. Kaydı Bul
         loan = self.loan_repo.get_by_id(loan_id)
         if not loan:
             raise Exception("Kayıt bulunamadı.")
@@ -61,7 +60,22 @@ class LoanService:
         if loan.iade_tarihi:
             raise Exception("Bu kitap zaten iade edilmiş.")
             
-        # İade işlemini yap ve varsa cezayı döndür
+        # 2. İade işlemini yap ve varsa cezayı hesapla
         ceza_tutari = self.loan_repo.return_loan(loan)
+        
+        # 3. 👇 YENİ EKLENEN KISIM: İADE VE CEZA MAİLİ GÖNDER 👇
+        try:
+            # Kullanıcı ve kitap bilgilerine ihtiyacımız var
+            user = self.user_repo.get_by_id(loan.user_id)
+            book = self.book_repo.get_by_id(loan.book_id)
+
+            if user and book:
+                # Az önce email_service dosyasına eklediğimiz özel fonksiyonu çağırıyoruz
+                send_return_notification(user.email, user.ad, book.ad, ceza_tutari)
+                print(f"✅ İade maili tetiklendi: {user.email}")
+                
+        except Exception as e:
+            # Mail gitmese bile işlem başarılı sayılsın
+            print(f"❌ İade maili gönderilemedi: {e}")
         
         return ceza_tutari
