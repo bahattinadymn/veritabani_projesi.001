@@ -7,7 +7,7 @@ load_dotenv(os.path.join(basedir, '.env'))
 
 class Config:
   
-    SQLALCHEMY_DATABASE_URI = 'mssql+pyodbc://sa:47293@LOCALHOST/KutuphaneDB?driver=ODBC+Driver+17+for+SQL+Server'
+    SQLALCHEMY_DATABASE_URI = 'mssql+pyodbc://sa:12345@LOCALHOST/KutuphaneDB?driver=ODBC+Driver+17+for+SQL+Server'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     JWT_SECRET_KEY = 'cok-gizli-super-sifre'
 
