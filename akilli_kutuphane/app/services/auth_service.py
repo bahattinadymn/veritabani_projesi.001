@@ -44,3 +44,23 @@ class AuthService:
             return token, user 
             
         raise Exception("E-posta veya şifre hatalı")
+
+
+    def change_password(self, user_id, eski_sifre, yeni_sifre):
+        # 1. Kullanıcıyı bul
+        user = self.user_repo.get_by_id(user_id)
+        if not user:
+            raise Exception("Kullanıcı bulunamadı.")
+            
+        # 2. Eski şifre doğru mu kontrol et
+        if not check_password_hash(user.sifre_hash, eski_sifre):
+            raise Exception("Mevcut şifreniz hatalı.")
+            
+        # 3. Yeni şifreyi şifrele ve kaydet
+        user.sifre_hash = generate_password_hash(yeni_sifre)
+        # Veritabanına kaydet (Commit işlemini repo veya db session üzerinden yapıyoruz)
+        # Buradaki save işlemi senin repository yapına göre değişebilir ama genelde:
+        from app import db
+        db.session.commit()
+        
+        return True

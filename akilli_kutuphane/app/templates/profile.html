@@ -2,7 +2,7 @@
 
 {% block content %}
 <style>
-    /* Bu sayfaya özel CSS stilleri (Senin tasarımın) */
+    /* Profil Sayfası Özel Tasarımı */
     .profile-header {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white;
@@ -60,7 +60,7 @@
 
                 <div class="d-flex justify-content-around text-center mb-4">
                     <div>
-                        <h5 class="fw-bold mb-0" id="bookCount">0</h5>
+                        <h5 class="fw-bold mb-0" id="okunanSayisi">-</h5>
                         <small class="text-muted">Okunan</small>
                     </div>
                     <div>
@@ -68,6 +68,10 @@
                         <small class="text-muted">Puan</small>
                     </div>
                 </div>
+                <button type="button" class="btn btn-outline-secondary w-100 rounded-pill mb-2" data-bs-toggle="modal"
+                    data-bs-target="#settingsModal">
+                    ⚙️ Ayarlar & Şifre
+                </button>
 
                 <button onclick="logout()" class="btn btn-outline-danger w-100 rounded-pill">
                     Güvenli Çıkış Yap
@@ -82,9 +86,7 @@
             <div class="col-md-6">
                 <div class="card stat-card p-3">
                     <div class="d-flex align-items-center">
-                        <div class="bg-primary text-white p-3 rounded-circle me-3">
-                            📚
-                        </div>
+                        <div class="bg-primary text-white p-3 rounded-circle me-3">📚</div>
                         <div>
                             <h6 class="text-muted mb-0">Aktif Ödünç</h6>
                             <h4 class="fw-bold mb-0" id="activeLoanCount">0 Kitap</h4>
@@ -95,9 +97,7 @@
             <div class="col-md-6">
                 <div class="card stat-card p-3">
                     <div class="d-flex align-items-center">
-                        <div class="bg-success text-white p-3 rounded-circle me-3">
-                            📅
-                        </div>
+                        <div class="bg-success text-white p-3 rounded-circle me-3">📅</div>
                         <div>
                             <h6 class="text-muted mb-0">Son İade Tarihi</h6>
                             <h4 class="fw-bold mb-0" id="lastDate">-</h4>
@@ -148,7 +148,7 @@
                                 <th class="text-end pe-4">Tutar</th>
                             </tr>
                         </thead>
-                        <tbody id="finesContainer">
+                        <tbody id="historyTableBody">
                             <tr>
                                 <td colspan="4" class="text-center py-4 text-muted">Yükleniyor...</td>
                             </tr>
@@ -160,14 +160,41 @@
 
     </div>
 </div>
+<div class="modal fade" id="settingsModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header bg-light">
+        <h5 class="modal-title fw-bold">⚙️ Hesap Ayarları</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
+      </div>
+      <div class="modal-body p-4">
+        <form id="passwordForm">
+            <div class="mb-3">
+                <label class="form-label text-muted small">Mevcut Şifreniz</label>
+                <input type="password" id="oldPass" class="form-control" placeholder="****">
+            </div>
+            <div class="mb-3">
+                <label class="form-label text-muted small">Yeni Şifre</label>
+                <input type="password" id="newPass" class="form-control" placeholder="****">
+            </div>
+            <div class="d-grid">
+                <button type="submit" class="btn btn-primary">Şifreyi Güncelle</button>
+            </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
 
 <script>
+    // SAYFA YÜKLENDİĞİNDE TÜM VERİLERİ ÇEK
     document.addEventListener("DOMContentLoaded", function () {
-        loadMyLoans();
-        loadMyFines(); // Cezaları da yükle
+        loadMyLoans();  // Aktif kitaplar
+        loadStats();    // İstatistikler (Okunan sayısı vb.)
+        loadHistory();  // Ceza Geçmişi
     });
 
-    // --- AKTİF KİTAPLARI YÜKLE ---
+    // 1. AKTİF KİTAPLARI VE KULLANICI ADINI YÜKLE
     async function loadMyLoans() {
         const user = JSON.parse(localStorage.getItem('user'));
         if (user) document.getElementById('userName').textContent = user.ad + ' ' + user.soyad;
@@ -181,9 +208,10 @@
             });
             const loans = await response.json();
 
-            // İstatistikleri Güncelle
+            // Aktif kitap sayısını güncelle
             document.getElementById('activeLoanCount').textContent = loans.length + ' Kitap';
-            document.getElementById('bookCount').textContent = loans.length + 3;
+
+            // NOT: Okunan kitap sayısını buradan GÜNCELLEMİYORUZ. loadStats fonksiyonu yapacak.
 
             const tbody = document.getElementById('loansTable');
             tbody.innerHTML = '';
@@ -254,49 +282,67 @@
         }
     }
 
-    // --- CEZALARI YÜKLE (YENİ) ---
-    async function loadMyFines() {
+    // 2. İSTATİSTİKLERİ YÜKLE (OKUNAN KİTAP SAYISI BURADAN GELİR)
+    async function loadStats() {
         const token = localStorage.getItem('token');
-        const container = document.getElementById('finesContainer');
-        const totalDisplay = document.getElementById('totalDebtDisplay');
-
         try {
-            const response = await fetch('/api/loans/fines/my', {
-                headers: { 'Authorization': `Bearer ${token}` }
+            const res = await fetch('/api/loans/stats', {
+                headers: { 'Authorization': 'Bearer ' + token }
             });
-            const fines = await response.json();
+            const data = await res.json();
 
-            container.innerHTML = ''; // Temizle
+            // Okunan Sayısını Backend'den gelen gerçek veriyle değiştir
+            if (document.getElementById('okunanSayisi'))
+                document.getElementById('okunanSayisi').innerText = data.okunan;
 
-            if (fines.length === 0) {
-                container.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-muted">🎉 Tebrikler! Hiç cezanız yok.</td></tr>';
-                totalDisplay.textContent = "0.00 TL";
-                return;
-            }
-
-            let totalAmount = 0;
-            fines.forEach(fine => {
-                totalAmount += parseFloat(fine.tutar);
-                const row = `
-                <tr>
-                    <td class="ps-4 fw-bold text-dark">${fine.kitap}</td>
-                    <td class="text-muted small">${fine.aciklama}</td>
-                    <td class="text-muted small">${fine.tarih}</td>
-                    <td class="text-end pe-4 fw-bold text-danger">-${fine.tutar} TL</td>
-                </tr>`;
-                container.innerHTML += row;
-            });
-            totalDisplay.textContent = totalAmount.toFixed(2) + " TL";
+            // Toplam cezayı güncelle
+            if (document.getElementById('totalDebtDisplay'))
+                document.getElementById('totalDebtDisplay').innerText = data.toplam_ceza + ' TL';
 
         } catch (error) {
-            console.error(error);
-            container.innerHTML = '<tr><td colspan="4" class="text-center text-danger">Veri yüklenemedi.</td></tr>';
+            console.error("İstatistik yüklenemedi", error);
         }
     }
 
-    // --- İADE ETME ---
+    // 3. CEZA VE ÖDEME GEÇMİŞİNİ YÜKLE
+    async function loadHistory() {
+        const token = localStorage.getItem('token');
+        const tableBody = document.getElementById('historyTableBody');
+
+        try {
+            // Backend'de oluşturduğumuz yeni rota: /api/loans/history
+            const res = await fetch('/api/loans/history', {
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            const history = await res.json();
+
+            tableBody.innerHTML = '';
+
+            if (history.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">Geçmiş ceza kaydı bulunmamaktadır.</td></tr>';
+                return;
+            }
+
+            history.forEach(item => {
+                const row = `
+                    <tr>
+                        <td class="ps-4"><span class="fw-bold text-dark">${item.kitap_adi}</span></td>
+                        <td>${item.aciklama}</td>
+                        <td>${item.tarih}</td>
+                        <td class="text-end pe-4"><span class="badge bg-danger">-${item.tutar} TL</span></td>
+                    </tr>
+                `;
+                tableBody.innerHTML += row;
+            });
+
+        } catch (error) {
+            tableBody.innerHTML = '<tr><td colspan="4" class="text-center text-danger">Geçmiş verileri yüklenemedi.</td></tr>';
+        }
+    }
+
+    // 4. KİTAP İADE ETME
     async function returnBook(loanId) {
-        if (!confirm("Bu kitabı kütüphaneye iade edip düşmek istiyor musunuz?")) return;
+        if (!confirm("Bu kitabı kütüphaneye iade etmek istiyor musunuz?")) return;
 
         const token = localStorage.getItem('token');
         try {
@@ -309,17 +355,71 @@
                 body: JSON.stringify({ loan_id: loanId })
             });
 
-            // Dönen cevabı al (Ceza mesajı olabilir)
             const data = await response.json();
 
             if (response.ok) {
-                alert("✅ " + data.message); // Backend'den gelen mesajı göster
+                alert("✅ " + data.message);
+                // Sayfadaki tüm verileri yenile
                 loadMyLoans();
-                loadMyFines(); // Cezaları da yenile
+                loadStats();
+                loadHistory();
             } else {
-                alert("Hata: " + data.error);
+                alert("Hata: " + data.msg);
             }
         } catch (e) { console.error(e); }
     }
+
+    function logout() {
+        if (confirm("Çıkış yapmak istediğinize emin misiniz?")) {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            window.location.href = '/login';
+        }
+    }
+    
+    document.getElementById('passwordForm').addEventListener('submit', async function(e) {
+        e.preventDefault(); // Sayfa yenilenmesini engelle
+        
+        const oldPass = document.getElementById('oldPass').value;
+        const newPass = document.getElementById('newPass').value;
+        const token = localStorage.getItem('token');
+
+        if(!oldPass || !newPass) {
+            alert("Lütfen tüm alanları doldurun.");
+            return;
+        }
+
+        try {
+            const res = await fetch('/api/auth/change-password', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + token
+                },
+                body: JSON.stringify({ 
+                    eski_sifre: oldPass, 
+                    yeni_sifre: newPass 
+                })
+            });
+
+            const data = await res.json();
+
+            if (res.ok) {
+                alert(data.message);
+                // Modalı kapat
+                var myModalEl = document.getElementById('settingsModal');
+                var modal = bootstrap.Modal.getInstance(myModalEl);
+                modal.hide();
+                
+                // Formu temizle
+                document.getElementById('passwordForm').reset();
+            } else {
+                alert("Hata: " + data.msg);
+            }
+        } catch (error) {
+            console.error(error);
+            alert("Bir hata oluştu.");
+        }
+    });
 </script>
 {% endblock %}

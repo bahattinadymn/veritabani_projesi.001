@@ -1,76 +1,67 @@
-from app import db
 from app.repositories.loan_repository import LoanRepository
 from app.repositories.book_repository import BookRepository
-import datetime
-from sqlalchemy import text
+from app.repositories.user_repository import UserRepository # 1. Import Eklendi
 from app.services.email_service import send_email
-from app.repositories.user_repository import UserRepository # Kullanıcı mailini bulmak için
+from datetime import datetime, timedelta
 
 class LoanService:
     def __init__(self):
         self.loan_repo = LoanRepository()
         self.book_repo = BookRepository()
+        self.user_repo = UserRepository() 
 
     def create_loan(self, user_id, book_id):
-        # 1. KİTAP ve STOK KONTROLÜ
+        # 1. Kitabı Bul
         book = self.book_repo.get_by_id(book_id)
         if not book:
-            raise Exception("Kitap bulunamadı!")
-        
+            raise Exception("Kitap bulunamadı.")
+            
+        # 2. Stok Kontrolü
         if book.stok < 1:
-            raise Exception("Üzgünüz, bu kitap stokta kalmadı!")
-
-        # 2. ZATEN ALMIŞ MI?
+            raise Exception("Bu kitap stokta yok.")
+            
+        # 3. Kullanıcının elinde bu kitap var mı?
         existing_loan = self.loan_repo.get_active_loan_by_user_and_book(user_id, book_id)
         if existing_loan:
-            raise Exception("Bu kitabı zaten okuyorsunuz.")
+            raise Exception("Bu kitabı zaten ödünç aldınız ve henüz iade etmediniz.")
 
+        # 4. Kitabı Ver (Veritabanına Kayıt)
+        # 14 gün sonrasını hesapla
+        son_teslim = datetime.utcnow() + timedelta(days=14)
+        new_loan = self.loan_repo.create(user_id, book_id, son_teslim)
+        
+        # 5. MAİL GÖNDERME İŞLEMİ (Hata veren yer burasıydı)
         try:
-            # 3. ÖDÜNÇ KAYDI OLUŞTUR
-            son_teslim = datetime.datetime.utcnow() + datetime.timedelta(days=14)
+            # Artık self.user_repo tanımlı olduğu için çalışacak
+            user = self.user_repo.get_by_id(user_id)
             
-            # BURADA SADECE KAYIT YAPIYORUZ
-            # SQL Trigger devreye girip Stok sayısını kendisi düşürecek!
-            new_loan = self.loan_repo.create(user_id, book_id, son_teslim)
-            
-            user = self.user_repo.get_by_id(user_id) # Kullanıcıyı bul
-            
-            icerik = f"""
-            Merhaba {user.ad},
-            
-            '{book.ad}' isimli kitabı ödünç aldın.
-            Son teslim tarihin: {son_teslim.strftime('%d.%m.%Y')}
-            
-            Lütfen zamanında getirmeyi unutma!
-            Keyifli okumalar.
-            """
-            send_email("Kitap Ödünç Alma İşlemi Başarılı 📖", user.email, icerik)
-            # -----------------------------------------------
-
-            return new_loan
+            if user: # Kullanıcı bulunduysa mail at
+                icerik = f"""
+                Merhaba {user.ad},
+                
+                '{book.ad}' kitabını ödünç alma işleminiz başarılı.
+                
+                Son Teslim Tarihi: {son_teslim.strftime('%d.%m.%Y')}
+                
+                Keyifli okumalar dileriz.
+                """
+                send_email("Kitap Ödünç Alındı 📖", user.email, icerik)
+                
         except Exception as e:
-            
-            # Hata olursa geri al
-            db.session.rollback()
-            print(f"ÖDÜNÇ HATASI: {e}")
-            raise Exception(f"İşlem başarısız: {str(e)}")
+            # Mail atılamasa bile işlem başarılı sayılsın, hata verip süreci durdurmasın
+            print(f"Mail gönderme hatası: {e}")
+
+        return new_loan
 
     def return_book(self, loan_id):
-        # İade işlemi
-        try:
-            # SQL Prosedürünü çağır (Ceza hesaplaması için)
-            db.session.execute(text("EXEC sp_KitapIadeEt :id"), {'id': loan_id})
-            db.session.commit()
-            return "İade işlemi başarılı."
-        except Exception as e:
-            # Prosedür yoksa veya hata verirse manuel iade yap
-            print(f"Prosedür Hatası (Normal iade deneniyor): {e}")
-            db.session.rollback()
+        loan = self.loan_repo.get_by_id(loan_id)
+        if not loan:
+            raise Exception("Kayıt bulunamadı.")
+        
+        if loan.iade_tarihi:
+            raise Exception("Bu kitap zaten iade edilmiş.")
             
-            loan = self.loan_repo.get_by_id(loan_id)
-            if loan and not loan.iade_tarihi:
-                loan.iade_tarihi = datetime.datetime.utcnow()
-                db.session.commit()
-                return "İade edildi (Prosedürsüz)."
-            else:
-                raise Exception("İade işlemi yapılamadı.")
+        # İade işlemini yap ve varsa cezayı döndür
+        ceza_tutari = self.loan_repo.return_loan(loan)
+        
+        return ceza_tutari
